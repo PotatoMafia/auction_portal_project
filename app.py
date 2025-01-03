@@ -97,7 +97,8 @@ def get_user(user_id):
 
     return {
         'email': user.email,
-        'username': user.username
+        'username': user.username,
+        'status': user.role
     }, 200
 
 @app.route('/user/<int:user_id>/bids', methods=['GET'])
@@ -134,14 +135,83 @@ def get_user_transactions(user_id):
         'transaction_time': transaction.transaction_time
     } for transaction in transactions], 200
 
+@app.route('/admin/auctions', methods=['GET'])
+@jwt_required()
+def get_all_auctions():
+    current_user = get_jwt_identity()
+    # Проверяем роль пользователя
+    if current_user['role'] != 'admin':
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    auctions = AuctionService.get_all_auctions()
+    return jsonify(auctions), 200
+# def get_all_auctions():
+#     user_id = get_jwt_identity()
+#     user = User.query.get(user_id)
+#     if user.role != "admin":
+#         return jsonify({'message': 'Unauthorized access'}), 403
+#
+#     auctions = Auction.query.all()
+#     return jsonify([{
+#         'auction_id': auction.auction_id,
+#         'title': auction.title,
+#         'description': auction.description,
+#         'starting_price': auction.starting_price,
+#         'end_time': auction.end_time,
+#         'user_id': auction.user_id
+#     } for auction in auctions]), 200
+
+
+@app.route('/admin/auction', methods=['POST'])
+@jwt_required()
+def create_auction_admin():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if user.role != "admin":
+        return jsonify({'message': 'Unauthorized access'}), 403
+
+    data = request.json
+    auction = Auction(
+        title=data['title'],
+        description=data['description'],
+        starting_price=data['starting_price'],
+        start_time=datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S'),
+        end_time=datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S'),
+        user_id=user_id
+    )
+    db.session.add(auction)
+    db.session.commit()
+    return jsonify({'message': 'Auction created successfully', 'auction_id': auction.auction_id}), 201
+
+
+@app.route('/admin/auction/<int:auction_id>', methods=['PUT'])
+@jwt_required()
+def edit_auction(auction_id):
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if user.role != "admin":
+        return jsonify({'message': 'Unauthorized access'}), 403
+
+    data = request.json
+    auction = Auction.query.get_or_404(auction_id)
+
+    auction.title = data.get('title', auction.title)
+    auction.description = data.get('description', auction.description)
+    auction.starting_price = data.get('starting_price', auction.starting_price)
+    auction.start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S') if 'start_time' in data else auction.start_time
+    auction.end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S') if 'end_time' in data else auction.end_time
+
+    db.session.commit()
+    return jsonify({'message': 'Auction updated successfully'}), 200
+
+
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
 
-    password = "123456"
-    hashed_password = "$2b$12$bVWnlTOIy6BEVIwamh/ED.OT7vblTlfZj.sUfyOwBA3VYAmAIu.hm"
+    # password = "123456"
+    # hashed_password = "$2b$12$bVWnlTOIy6BEVIwamh/ED.OT7vblTlfZj.sUfyOwBA3VYAmAIu.hm"
 
-    # Проверяем
-    print(check_password_hash(hashed_password, password))
+    # print(check_password_hash(hashed_password, password))
     app.run(host='127.0.0.1', port=5000, debug=True)

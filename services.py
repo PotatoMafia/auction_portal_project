@@ -37,7 +37,7 @@ class UserService:
         if not user.check_password(password):
             return {'message': 'Wrong password'}, 401
 
-        access_token = create_access_token(identity=user.user_id)
+        access_token = create_access_token(identity={"user_id": user.user_id, "role": user.role})
         return {'access_token': access_token, 'user_id': user.user_id}, 200
 
 
