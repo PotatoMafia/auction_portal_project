@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify
 from flask_bcrypt import check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from models import Bid, Auction, Transaction, User
+from models import Bid, Auction, Transaction, User, Log
 from services import UserService, AuctionService
 from extensions import db,jwt
 from flask_cors import CORS
@@ -109,6 +109,20 @@ def get_user_bids(user_id):
         'bid_price': bid.bid_price,
         'bid_time': bid.bid_time
     } for bid in bids], 200
+
+@app.route('/logs', methods=['GET'])
+@jwt_required()
+def get_logs():
+    logs = Log.query.all()
+    return jsonify([
+        {
+            'log_id': log.log_id,
+            'action': log.action,
+            'user_id': log.user_id,
+            'timestamp': log.timestamp
+        }
+        for log in logs
+    ]), 200
 
 @app.route('/user/<int:user_id>/transactions', methods=['GET'])
 def get_user_transactions(user_id):
