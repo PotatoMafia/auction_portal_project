@@ -6,19 +6,40 @@ from extensions import db, bcrypt
 class UserService:
     @staticmethod
     def register_user(data):
-        hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-        user = User(email=data['email'], username=data['username'], password_hash=hashed_password)
+        email = data.get('email')
+        username = data.get('username')
+        password = data.get('password')
+
+        if User.query.filter_by(email=email).first():
+            return {'message': 'Email already exists'}, 400
+
+        user = User(email=email, username=username)
+        user.set_password(password)
+        print(user)
         db.session.add(user)
         db.session.commit()
+
         return {'message': 'User registered successfully'}
 
     @staticmethod
     def login_user(data):
-        user = User.query.filter_by(email=data['email']).first()
-        if user and bcrypt.check_password_hash(user.password_hash, data['password']):
-            access_token = create_access_token(identity=user.user_id, expires_delta=timedelta(hours=1))
-            return {'access_token': access_token}
-        return {'message': 'Invalid credentials'}, 401
+        email = data.get('email')
+        password = data.get('password')
+        user = User.query.first()  # Получите первого пользователя
+        print(user.password_hash)
+
+
+        user = User.query.filter_by(email=email).first()
+        print(user)
+        if not user:
+            return {'message': 'Неверный email или пароль'}, 401
+
+        if not user.check_password(password):
+            return {'message': 'Неверный  пароль'}, 401
+
+        access_token = create_access_token(identity=user.user_id)
+        return {'access_token': access_token, 'user_id': user.user_id}, 200
+
 
 class AuctionService:
     @staticmethod
