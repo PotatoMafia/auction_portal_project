@@ -25,17 +25,17 @@ class UserService:
     def login_user(data):
         email = data.get('email')
         password = data.get('password')
-        user = User.query.first()  # Получите первого пользователя
+        user = User.query.first()
         print(user.password_hash)
 
 
         user = User.query.filter_by(email=email).first()
         print(user)
         if not user:
-            return {'message': 'Неверный email или пароль'}, 401
+            return {'message': 'Wrong email'}, 401
 
         if not user.check_password(password):
-            return {'message': 'Неверный  пароль'}, 401
+            return {'message': 'Wrong password'}, 401
 
         access_token = create_access_token(identity=user.user_id)
         return {'access_token': access_token, 'user_id': user.user_id}, 200

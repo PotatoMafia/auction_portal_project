@@ -84,11 +84,17 @@ def home():
     return jsonify({'message': 'Welcome to the Auction API!'})
 
 
-@app.route('/user/<int:user_id>', methods=['GET'])
+@app.route('/user/<user_id>', methods=['GET'])
 def get_user(user_id):
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return {'message': 'Invalid user ID'}, 400
+
     user = User.query.get(user_id)
-    if user is None:
+    if not user:
         return {'message': 'User not found'}, 404
+
     return {
         'email': user.email,
         'username': user.username
