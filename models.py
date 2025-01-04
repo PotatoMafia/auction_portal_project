@@ -1,8 +1,8 @@
-
 # models.py
 from datetime import datetime
 from extensions import db, bcrypt
 from werkzeug.security import generate_password_hash, check_password_hash
+
 
 class User(db.Model):
     user_id = db.Column(db.Integer, primary_key=True)
@@ -19,6 +19,7 @@ class User(db.Model):
         print(f"HASH: {self.password_hash}, Input password: {password}")
         return bcrypt.check_password_hash(self.password_hash, password)
 
+
 class Auction(db.Model):
     auction_id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
@@ -32,6 +33,18 @@ class Auction(db.Model):
     bids = db.relationship('Bid', backref='auction', lazy=True)
     transaction = db.relationship('Transaction', backref='auction', uselist=False, lazy=True)
 
+    def to_dict(self):
+        return {
+            'auction_id': self.auction_id,
+            'title': self.title,
+            'description': self.description,
+            'starting_price': self.starting_price,
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'end_time': self.end_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'user_id': self.user_id
+        }
+
+
 class Bid(db.Model):
     bid_id = db.Column(db.Integer, primary_key=True)
     auction_id = db.Column(db.Integer, db.ForeignKey('auction.auction_id'), nullable=False)
@@ -39,12 +52,14 @@ class Bid(db.Model):
     bid_price = db.Column(db.Float, nullable=False)
     bid_time = db.Column(db.DateTime, default=datetime.utcnow)
 
+
 class Transaction(db.Model):
     transaction_id = db.Column(db.Integer, primary_key=True)
     auction_id = db.Column(db.Integer, db.ForeignKey('auction.auction_id'), nullable=False)
     winner_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
     payment_status = db.Column(db.String(20), default="pending")
     transaction_time = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class Log(db.Model):
     log_id = db.Column(db.Integer, primary_key=True)

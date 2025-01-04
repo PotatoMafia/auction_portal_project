@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from flask import Flask, request, jsonify
@@ -14,11 +15,18 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auction_portal.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'AAAAAAAAAAAAAAA'
+app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 
 db.init_app(app)
 jwt.init_app(app)
 
+log_file = 'app_logs.txt'
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)  # Уровень логирования (INFO, WARNING, ERROR и т.д.)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
 
+app.logger.addHandler(file_handler)
 
 # Routes
 @app.route('/register', methods=['POST'])
@@ -47,7 +55,9 @@ def create_auction():
 
 @app.route('/auctions', methods=['GET'])
 def get_auctions():
-    return jsonify(AuctionService.get_all_auctions()), 200
+    auctions = Auction.query.all()
+    return jsonify([auction.to_dict() for auction in auctions]), 200
+
 
 @app.route('/auction/<int:auction_id>', methods=['GET'])
 def get_auction(auction_id):
@@ -137,14 +147,24 @@ def get_user_transactions(user_id):
 
 @app.route('/admin/auctions', methods=['GET'])
 @jwt_required()
-def get_all_auctions():
+def get_admin_auctions():
     current_user = get_jwt_identity()
-    # Проверяем роль пользователя
-    if current_user['role'] != 'admin':
+    app.logger.info(f"Request from user: {current_user}")
+
+    # Check the user's role
+    user_role = current_user.get('role')
+    if user_role != 'admin':
+        app.logger.warning(f"Access denied for user with role: {user_role}")
         return jsonify({"msg": "Unauthorized"}), 403
 
-    auctions = AuctionService.get_all_auctions()
-    return jsonify(auctions), 200
+    try:
+        auctions = AuctionService.get_all_auctions()
+        app.logger.info(f"Returning {len(auctions)} auctions.")
+        return jsonify(auctions), 200
+    except Exception as e:
+        app.logger.error(f"Error retrieving auctions: {str(e)}")
+        return jsonify({"msg": "Server error"}), 500
+
 # def get_all_auctions():
 #     user_id = get_jwt_identity()
 #     user = User.query.get(user_id)
@@ -189,6 +209,7 @@ def create_auction_admin():
 def edit_auction(auction_id):
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
+
     if user.role != "admin":
         return jsonify({'message': 'Unauthorized access'}), 403
 
@@ -198,11 +219,17 @@ def edit_auction(auction_id):
     auction.title = data.get('title', auction.title)
     auction.description = data.get('description', auction.description)
     auction.starting_price = data.get('starting_price', auction.starting_price)
-    auction.start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S') if 'start_time' in data else auction.start_time
-    auction.end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S') if 'end_time' in data else auction.end_time
+    if 'start_time' in data:
+        auction.start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
+    if 'end_time' in data:
+        auction.end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
 
-    db.session.commit()
-    return jsonify({'message': 'Auction updated successfully'}), 200
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Auction updated successfully'}), 200
+    except Exception as e:
+        return jsonify({'message': f'Error updating auction: {str(e)}'}), 500
+
 
 
 

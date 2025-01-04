@@ -42,18 +42,21 @@ class UserService:
 
 
 class AuctionService:
+    # @staticmethod
+    # def get_all_auctions():
+    #     auctions = Auction.query.filter(Auction.end_time > datetime.utcnow()).all()
+    #     return [{
+    #         'auction_id': auction.auction_id,
+    #         'title': auction.title,
+    #         'description': auction.description,
+    #         'image_url': auction.image_url,
+    #         'starting_price': auction.starting_price,
+    #         'start_time': auction.start_time,
+    #         'end_time': auction.end_time
+    #     } for auction in auctions]
     @staticmethod
     def get_all_auctions():
-        auctions = Auction.query.filter(Auction.end_time > datetime.utcnow()).all()
-        return [{
-            'auction_id': auction.auction_id,
-            'title': auction.title,
-            'description': auction.description,
-            'image_url': auction.image_url,
-            'starting_price': auction.starting_price,
-            'start_time': auction.start_time,
-            'end_time': auction.end_time
-        } for auction in auctions]
+        return Auction.query.all()
 
     @staticmethod
     def get_auction_details(auction_id):
