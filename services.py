@@ -1,7 +1,12 @@
+import json
 from datetime import datetime, timedelta
-from flask_jwt_extended import create_access_token
+from os import access
+from venv import logger
+
+from flask_jwt_extended import create_access_token, get_jwt_identity
 from models import User, Auction, Bid, Transaction
 from extensions import db, bcrypt
+import logging
 
 class UserService:
     @staticmethod
@@ -21,24 +26,40 @@ class UserService:
 
         return {'message': 'User registered successfully'}
 
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     @staticmethod
     def login_user(data):
         email = data.get('email')
         password = data.get('password')
-        user = User.query.first()
-        print(user.password_hash)
 
-
+        # Wyszukiwanie użytkownika po adresie email
         user = User.query.filter_by(email=email).first()
-        print(user)
+
         if not user:
-            return {'message': 'Wrong email'}, 401
+            logger.warning(f"Nieudana próba logowania - nieprawidłowy email: {email}")
+            return {'message': 'Nieprawidłowy email'}, 401
 
+        # Sprawdzenie hasła
         if not user.check_password(password):
-            return {'message': 'Wrong password'}, 401
+            logger.warning(f"Nieudana próba logowania - nieprawidłowe hasło dla użytkownika: {email}")
+            return {'message': 'Nieprawidłowe hasło'}, 401
 
-        access_token = create_access_token(identity={"user_id": user.user_id, "role": user.role})
-        return {'access_token': access_token, 'user_id': user.user_id}, 200
+        # Logowanie informacji o użytkowniku
+        logger.info(f"Użytkownik pomyślnie zalogowany: user_id={user.user_id}, email={user.email}, rola={user.role}")
+
+        # Tworzenie tokenu
+        access_token = create_access_token(
+            identity=str(user.user_id),  # Unikalny identyfikator
+            additional_claims={"rola": str(user.role)}  # Dodatkowe dane
+        )
+        logger.info(f"access_token: {access_token}, type: {type(access_token)}")
+        logger.info(f"user.id: {user.user_id}, type: {type(user.user_id)}")
+        logger.info(f"user.role: {user.role}, type: {type(user.role)}")
+
+        return {'access_token': access_token, 'user_id': user.user_id, 'role:': user.role}, 200
 
 
 class AuctionService:

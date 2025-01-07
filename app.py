@@ -1,21 +1,25 @@
 import logging
 from datetime import datetime
+from venv import logger
 
 from flask import Flask, request, jsonify
 from flask_bcrypt import check_password_hash
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, verify_jwt_in_request
 
 from models import Bid, Auction, Transaction, User, Log
 from services import UserService, AuctionService
 from extensions import db,jwt
 from flask_cors import CORS
+from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
 app = Flask(__name__)
 CORS(app)
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auction_portal.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'AAAAAAAAAAAAAAA'
-app.config['JWT_IDENTITY_CLAIM'] = 'sub'
+app.config['JWT_TOKEN_LOCATION'] = ['headers']
+#app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 
 db.init_app(app)
 jwt.init_app(app)
@@ -28,7 +32,35 @@ file_handler.setFormatter(formatter)
 
 app.logger.addHandler(file_handler)
 
+#TO DLA POSTMAN
+@app.errorhandler(NoAuthorizationError)
+def handle_no_authorization_error(e):
+    return jsonify({"msg": "Missing Authorization Header"}), 401
+
+@app.errorhandler(InvalidHeaderError)
+def handle_invalid_header_error(e):
+    return jsonify({"msg": "Invalid Authorization Header"}), 422
 # Routes
+
+@app.route('/admin', methods=['GET'])
+def admin():
+    try:
+        verify_jwt_in_request()
+        user_identity = get_jwt_identity()
+        print(f"User identity: {user_identity}, Type: {type(user_identity)}")  # Диагностика
+
+        if not isinstance(user_identity, str):
+            return {'msg': 'Subject must be a string'}, 422
+
+        claims = get_jwt()
+        if claims.get('role') != 'admin':
+            return {'msg': 'Access denied. Admins only.'}, 403
+
+        return {'message': f'Welcome, admin {user_identity}'}, 200
+    except Exception as e:
+        return {'msg': str(e)}, 400
+
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
@@ -37,12 +69,17 @@ def register():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
-    result = UserService.login_user(data)
-    if isinstance(result, tuple):
-        response, status_code = result
-        return jsonify(response), status_code
-    else:
-        return jsonify({'error': 'Unexpected response from login_user'}), 500
+    email = data.get('email')
+    password = data.get('password')
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.check_password(password):
+        return jsonify({'message': 'Invalid credentials'}), 401
+
+    access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
+
+    return {'access_token': access_token}, 200
+
 
 
 @app.route('/auctions', methods=['POST'])
@@ -108,7 +145,7 @@ def get_user(user_id):
     return {
         'email': user.email,
         'username': user.username,
-        'status': user.role
+        'role': user.role
     }, 200
 
 @app.route('/user/<int:user_id>/bids', methods=['GET'])
@@ -145,25 +182,29 @@ def get_user_transactions(user_id):
         'transaction_time': transaction.transaction_time
     } for transaction in transactions], 200
 
+
+from flask_jwt_extended import get_jwt_identity, get_jwt
+
 @app.route('/admin/auctions', methods=['GET'])
 @jwt_required()
 def get_admin_auctions():
-    current_user = get_jwt_identity()
-    app.logger.info(f"Request from user: {current_user}")
-
-    # Check the user's role
-    user_role = current_user.get('role')
-    if user_role != 'admin':
-        app.logger.warning(f"Access denied for user with role: {user_role}")
-        return jsonify({"msg": "Unauthorized"}), 403
-
     try:
+        user_id = get_jwt_identity()
+        claims = get_jwt()
+        role = claims.get('role')
+
+        if role != 'admin':
+            return jsonify({"msg": "Access denied"}), 403
+
+        # Fetch all auctions
         auctions = AuctionService.get_all_auctions()
-        app.logger.info(f"Returning {len(auctions)} auctions.")
         return jsonify(auctions), 200
     except Exception as e:
         app.logger.error(f"Error retrieving auctions: {str(e)}")
         return jsonify({"msg": "Server error"}), 500
+
+
+
 
 # def get_all_auctions():
 #     user_id = get_jwt_identity()
@@ -187,7 +228,10 @@ def get_admin_auctions():
 def create_auction_admin():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
+    logging.INFO(f"rola={user.role}")
+    logging.INFO(f"")
     if user.role != "admin":
+        logging.warning(f"rola={user.role}")
         return jsonify({'message': 'Unauthorized access'}), 403
 
     data = request.json
@@ -211,6 +255,7 @@ def edit_auction(auction_id):
     user = User.query.get(user_id)
 
     if user.role != "admin":
+        logging.warning(f"rola={user.role}")
         return jsonify({'message': 'Unauthorized access'}), 403
 
     data = request.json
