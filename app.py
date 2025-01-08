@@ -3,7 +3,7 @@ from datetime import datetime
 from functools import wraps
 from venv import logger
 
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, abort
 from flask_bcrypt import check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, verify_jwt_in_request
 
@@ -33,11 +33,7 @@ file_handler.setFormatter(formatter)
 
 app.logger.addHandler(file_handler)
 
-#TO DLA POSTMAN
-# @app.errorhandler(NoAuthorizationError)
-# def handle_no_authorization_error(e):
-#     return jsonify({"msg": "Missing Authorization Header"}), 401
-
+# To jeszcze zmieniam(co niżej jest)
 @app.before_request
 def handle_preflight():
     if request.method == 'OPTIONS':
@@ -55,10 +51,13 @@ def handle_invalid_header_error(e):
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        verify_jwt_in_request()
-        claims = get_jwt()
-        if claims.get('role') != 'admin':
-            return jsonify({"msg": "Access denied. Admins only."}), 403
+        try:
+            verify_jwt_in_request()
+            claims = get_jwt()
+            if claims.get('role') != 'admin':
+                abort(404)
+        except Exception as e:
+            abort(404)
         return fn(*args, **kwargs)
     return wrapper
 
@@ -212,6 +211,7 @@ def get_admin_auctions():
 
 
 @app.route('/admin/auction', methods=['POST'])
+@admin_required
 def create_admin_auction():
     try:
         data = request.json
@@ -222,10 +222,11 @@ def create_admin_auction():
         return jsonify({'msg': 'Server error'}), 500
 
 @app.route('/admin/auction/<int:auction_id>', methods=['PUT'])
+@admin_required
 def update_admin_auction(auction_id):
     try:
         data = request.json
-        updated_auction = AuctionService.update_auction(auction_id, data)
+        updated_auction = AuctionService.edit_auction(auction_id, data)
         return jsonify({'msg': 'Auction updated successfully'}), 200
     except Exception as e:
         app.logger.error(f"Error updating auction: {e}")
@@ -240,31 +241,23 @@ def register():
     return jsonify(UserService.register_user(data)), 201
 
 
-active_tokens = {}
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-
-    # Znalezienie użytkownika
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
         return jsonify({'message': 'Invalid credentials'}), 401
 
-    # Sprawdzanie, czy istnieje już aktywny token dla użytkownika
-    user_id = str(user.user_id)
-    if user_id in active_tokens:
-        return {
-            'access_token': active_tokens[user_id],
-            'message': 'Reusing existing token'
-        }, 200
+    access_token = create_access_token(identity=str(user.user_id), additional_claims={'role': user.role})
 
-    # Generowanie nowego tokena
-    access_token = create_access_token(identity=user_id, additional_claims={'role': user.role})
-    active_tokens[user_id] = access_token
+    return {
+        'access_token': access_token,
+        'user_id': user.user_id,
+        'role': user.role
+    }, 200
 
-    return {'access_token': access_token , 'user_id': user.user_id, 'role': user.role}, 200
 
 
 

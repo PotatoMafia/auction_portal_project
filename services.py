@@ -30,36 +30,36 @@ class UserService:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    @staticmethod
-    def login_user(data):
-        email = data.get('email')
-        password = data.get('password')
-
-        # Wyszukiwanie użytkownika po adresie email
-        user = User.query.filter_by(email=email).first()
-
-        if not user:
-            logger.warning(f"Nieudana próba logowania - nieprawidłowy email: {email}")
-            return {'message': 'Nieprawidłowy email'}, 401
-
-        # Sprawdzenie hasła
-        if not user.check_password(password):
-            logger.warning(f"Nieudana próba logowania - nieprawidłowe hasło dla użytkownika: {email}")
-            return {'message': 'Nieprawidłowe hasło'}, 401
-
-        # Logowanie informacji o użytkowniku
-        logger.info(f"Użytkownik pomyślnie zalogowany: user_id={user.user_id}, email={user.email}, rola={user.role}")
-
-        # Tworzenie tokenu
-        access_token = create_access_token(
-            identity=str(user.user_id),  # Unikalny identyfikator
-            additional_claims={"rola": str(user.role)}  # Dodatkowe dane
-        )
-        logger.info(f"access_token: {access_token}, type: {type(access_token)}")
-        logger.info(f"user.id: {user.user_id}, type: {type(user.user_id)}")
-        logger.info(f"user.role: {user.role}, type: {type(user.role)}")
-
-        return {'access_token': access_token, 'user_id': user.user_id, 'role:': user.role}, 200
+    # @staticmethod
+    # def login_user(data):
+    #     email = data.get('email')
+    #     password = data.get('password')
+    #
+    #     # Wyszukiwanie użytkownika po adresie email
+    #     user = User.query.filter_by(email=email).first()
+    #
+    #     if not user:
+    #         logger.warning(f"Nieudana próba logowania - nieprawidłowy email: {email}")
+    #         return {'message': 'Nieprawidłowy email'}, 401
+    #
+    #     # Sprawdzenie hasła
+    #     if not user.check_password(password):
+    #         logger.warning(f"Nieudana próba logowania - nieprawidłowe hasło dla użytkownika: {email}")
+    #         return {'message': 'Nieprawidłowe hasło'}, 401
+    #
+    #     # Logowanie informacji o użytkowniku
+    #     logger.info(f"Użytkownik pomyślnie zalogowany: user_id={user.user_id}, email={user.email}, rola={user.role}")
+    #
+    #     # Tworzenie tokenu
+    #     access_token = create_access_token(
+    #         identity=user.user_id,  # Unikalny identyfikator
+    #         additional_claims={"rola": user.role}  # Dodatkowe dane
+    #     )
+    #     logger.info(f"access_token: {access_token}, type: {type(access_token)}")
+    #     logger.info(f"user.id: {user.user_id}, type: {type(user.user_id)}")
+    #     logger.info(f"user.role: {user.role}, type: {type(user.role)}")
+    #
+    #     return {'access_token': access_token, 'user_id': user.user_id, 'role:': user.role}, 200
 
 
 
@@ -88,6 +88,74 @@ class AuctionService:
             'start_time': auction.start_time.isoformat(),  # Ensure datetime is serialized
             'end_time': auction.end_time.isoformat()  # Ensure datetime is serialized
         } for auction in auctions]
+
+    @staticmethod
+    def edit_auction(auction_id, data):
+        """
+        Edytuje istniejącą aukcję.
+
+        :param auction_id: ID aukcji do edycji.
+        :param data: Dane do aktualizacji (słownik z polami: title, description, starting_price, start_time, end_time).
+        :param user_id: ID użytkownika wykonującego operację.
+        :return: Zaktualizowany obiekt aukcji.
+        :raises PermissionError: Jeśli użytkownik nie ma uprawnień do edycji aukcji.
+        :raises ValueError: Jeśli dane wejściowe są nieprawidłowe.
+        """
+        # Pobierz aukcję do edycji
+        auction = Auction.query.get(auction_id)
+        if not auction:
+            raise ValueError(f"Auction with ID {auction_id} not found.")
+
+
+        # Aktualizuj dane aukcji
+        auction.title = data.get('title', auction.title)
+        auction.description = data.get('description', auction.description)
+        auction.starting_price = data.get('starting_price', auction.starting_price)
+
+        # Parsowanie i walidacja daty
+        try:
+            if 'start_time' in data:
+                auction.start_time = datetime.fromisoformat(data['start_time'])
+            if 'end_time' in data:
+                auction.end_time = datetime.fromisoformat(data['end_time'])
+        except ValueError as e:
+            raise ValueError(f"Invalid date format: {e}")
+
+        # Zapisz zmiany please
+        db.session.commit()
+
+        return auction
+
+    @staticmethod
+    def create_auction(data, user_id):
+        """
+        Tworzenie nowej aukcji przez admina
+        """
+        title = data.get('title')
+        description = data.get('description')
+        starting_price = data.get('starting_price')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+
+        # Walidacja danych
+        if not title or not description or not starting_price or not start_time or not end_time:
+            raise ValueError("Brak wymaganych danych do utworzenia aukcji")
+
+        if datetime.fromisoformat(end_time) <= datetime.fromisoformat(start_time):
+            raise ValueError("Data zakończenia musi być późniejsza niż data rozpoczęcia")
+
+        # Tworzenie nowej aukcji
+        auction = Auction(
+            title=title,
+            description=description,
+            starting_price=starting_price,
+            start_time=datetime.fromisoformat(start_time),
+            end_time=datetime.fromisoformat(end_time),
+            creator_id=user_id
+        )
+        db.session.add(auction)
+        db.session.commit()
+        return auction
 
     @staticmethod
     def get_auction_details(auction_id):
