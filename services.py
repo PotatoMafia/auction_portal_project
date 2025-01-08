@@ -62,6 +62,7 @@ class UserService:
         return {'access_token': access_token, 'user_id': user.user_id, 'role:': user.role}, 200
 
 
+
 class AuctionService:
     # @staticmethod
     # def get_all_auctions():
@@ -77,7 +78,16 @@ class AuctionService:
     #     } for auction in auctions]
     @staticmethod
     def get_all_auctions():
-        return Auction.query.all()
+        auctions = Auction.query.all()
+        return [{
+            'auction_id': auction.auction_id,
+            'title': auction.title,
+            'description': auction.description,
+            'image_url': auction.image_url,
+            'starting_price': auction.starting_price,
+            'start_time': auction.start_time.isoformat(),  # Ensure datetime is serialized
+            'end_time': auction.end_time.isoformat()  # Ensure datetime is serialized
+        } for auction in auctions]
 
     @staticmethod
     def get_auction_details(auction_id):
