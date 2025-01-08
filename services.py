@@ -91,28 +91,15 @@ class AuctionService:
 
     @staticmethod
     def edit_auction(auction_id, data):
-        """
-        Edytuje istniejącą aukcję.
-
-        :param auction_id: ID aukcji do edycji.
-        :param data: Dane do aktualizacji (słownik z polami: title, description, starting_price, start_time, end_time).
-        :param user_id: ID użytkownika wykonującego operację.
-        :return: Zaktualizowany obiekt aukcji.
-        :raises PermissionError: Jeśli użytkownik nie ma uprawnień do edycji aukcji.
-        :raises ValueError: Jeśli dane wejściowe są nieprawidłowe.
-        """
-        # Pobierz aukcję do edycji
         auction = Auction.query.get(auction_id)
         if not auction:
             raise ValueError(f"Auction with ID {auction_id} not found.")
 
-
-        # Aktualizuj dane aukcji
         auction.title = data.get('title', auction.title)
         auction.description = data.get('description', auction.description)
         auction.starting_price = data.get('starting_price', auction.starting_price)
+        auction.user_id = data.get('user_id', auction.user_id)
 
-        # Parsowanie i walidacja daty
         try:
             if 'start_time' in data:
                 auction.start_time = datetime.fromisoformat(data['start_time'])
@@ -121,7 +108,6 @@ class AuctionService:
         except ValueError as e:
             raise ValueError(f"Invalid date format: {e}")
 
-        # Zapisz zmiany please
         db.session.commit()
 
         return auction
@@ -151,7 +137,7 @@ class AuctionService:
             starting_price=starting_price,
             start_time=datetime.fromisoformat(start_time),
             end_time=datetime.fromisoformat(end_time),
-            creator_id=user_id
+            user_id=user_id
         )
         db.session.add(auction)
         db.session.commit()
