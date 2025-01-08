@@ -61,6 +61,17 @@ def admin_required(fn):
             return jsonify({"msg": "Access denied. Admins only."}), 403
         return fn(*args, **kwargs)
     return wrapper
+
+@app.route('/tokencheck/<int:fn>', methods=['GET'])
+def user_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        verify_jwt_in_request()
+        claims = get_jwt()
+        if claims.get('role') != 'user':
+            return jsonify({"msg": "Access denied. user only."}), 403
+        return fn(*args, **kwargs)
+    return wrapper
 # Routes
 @app.route('/admin', methods=['GET'])
 @admin_required
