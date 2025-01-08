@@ -26,7 +26,7 @@ jwt.init_app(app)
 
 log_file = 'app_logs.txt'
 file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.INFO)  # Уровень логирования (INFO, WARNING, ERROR и т.д.)
+file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 
@@ -47,7 +47,7 @@ def admin():
     try:
         verify_jwt_in_request()
         user_identity = get_jwt_identity()
-        print(f"User identity: {user_identity}, Type: {type(user_identity)}")  # Диагностика
+        print(f"User identity: {user_identity}, Type: {type(user_identity)}")
 
         if not isinstance(user_identity, str):
             return {'msg': 'Subject must be a string'}, 422
@@ -66,17 +66,30 @@ def register():
     data = request.json
     return jsonify(UserService.register_user(data)), 201
 
+
+active_tokens = {}
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
 
+    # Znalezienie użytkownika
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
         return jsonify({'message': 'Invalid credentials'}), 401
 
-    access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
+    # Sprawdzanie, czy istnieje już aktywny token dla użytkownika
+    user_id = str(user.user_id)
+    if user_id in active_tokens:
+        return {
+            'access_token': active_tokens[user_id],
+            'message': 'Reusing existing token'
+        }, 200
+
+    # Generowanie nowego tokena
+    access_token = create_access_token(identity=user_id, additional_claims={'role': user.role})
+    active_tokens[user_id] = access_token
 
     return {'access_token': access_token}, 200
 
