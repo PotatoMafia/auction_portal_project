@@ -91,7 +91,7 @@ def login():
     access_token = create_access_token(identity=user_id, additional_claims={'role': user.role})
     active_tokens[user_id] = access_token
 
-    return {'access_token': access_token}, 200
+    return {'access_token': access_token , 'user_id': user.user_id}, 200
 
 
 
