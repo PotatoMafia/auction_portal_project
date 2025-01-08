@@ -33,11 +33,7 @@ file_handler.setFormatter(formatter)
 
 app.logger.addHandler(file_handler)
 
-#TO DLA POSTMAN
-# @app.errorhandler(NoAuthorizationError)
-# def handle_no_authorization_error(e):
-#     return jsonify({"msg": "Missing Authorization Header"}), 401
-
+# To jeszcze zmieniam(co niżej jest)
 @app.before_request
 def handle_preflight():
     if request.method == 'OPTIONS':
@@ -214,7 +210,7 @@ def create_admin_auction():
 def update_admin_auction(auction_id):
     try:
         data = request.json
-        updated_auction = AuctionService.update_auction(auction_id, data)
+        updated_auction = AuctionService.edit_auction(auction_id, data)
         return jsonify({'msg': 'Auction updated successfully'}), 200
     except Exception as e:
         app.logger.error(f"Error updating auction: {e}")
@@ -250,7 +246,7 @@ def login():
         }, 200
 
     # Generowanie nowego tokena
-    access_token = create_access_token(identity=user_id, additional_claims={'role': user.role})
+    access_token = create_access_token(identity=str(user_id), additional_claims={'role': user.role})
     active_tokens[user_id] = access_token
 
     return {'access_token': access_token , 'user_id': user.user_id, 'role': user.role}, 200
