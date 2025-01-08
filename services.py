@@ -27,8 +27,8 @@ class UserService:
         return {'message': 'User registered successfully'}
 
 
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
+    # logging.basicConfig(level=logging.INFO)
+    # logger = logging.getLogger(__name__)
 
     # @staticmethod
     # def login_user(data):

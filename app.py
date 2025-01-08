@@ -25,13 +25,13 @@ app.config['JWT_TOKEN_LOCATION'] = ['headers']
 db.init_app(app)
 jwt.init_app(app)
 
-log_file = 'app_logs.txt'
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-app.logger.addHandler(file_handler)
+# log_file = 'app_logs.txt'
+# file_handler = logging.FileHandler(log_file)
+# file_handler.setLevel(logging.INFO)
+# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# file_handler.setFormatter(formatter)
+#
+# app.logger.addHandler(file_handler)
 
 # To jeszcze zmieniam(co niżej jest)
 @app.before_request
