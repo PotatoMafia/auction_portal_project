@@ -43,6 +43,17 @@ def handle_preflight():
         response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
         return response
 
+@app.before_request
+def admin_routes_auth():
+    if request.path.startswith('/admin'):
+        try:
+            verify_jwt_in_request()
+            claims = get_jwt()
+            if claims.get('role') != 'admin':
+                return jsonify({'msg': 'Access denied. Admins only.'}), 403
+        except Exception as e:
+            return jsonify({'msg': 'Authorization error'}), 401
+
 
 @app.errorhandler(InvalidHeaderError)
 def handle_invalid_header_error(e):
