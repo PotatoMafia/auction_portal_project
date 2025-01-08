@@ -14,7 +14,6 @@ from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderErr
 app = Flask(__name__)
 CORS(app)
 
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auction_portal.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'AAAAAAAAAAAAAAA'
@@ -299,4 +298,4 @@ if __name__ == '__main__':
     # hashed_password = "$2b$12$bVWnlTOIy6BEVIwamh/ED.OT7vblTlfZj.sUfyOwBA3VYAmAIu.hm"
 
     # print(check_password_hash(hashed_password, password))
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
