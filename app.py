@@ -288,18 +288,24 @@ def get_auctions():
 
 @app.route('/auction/<int:auction_id>', methods=['GET'])
 def get_auction(auction_id):
-    auction = Auction.query.get(auction_id)
+    auction = AuctionService.get_auction_details(auction_id)
     if auction:
+        
+        print(auction.get("bids"))
+
         return jsonify({
-            'title': auction.title,
-            'description': auction.description,
-            'starting_price': auction.starting_price,
-            'end_time': auction.end_time
+            'title': auction.get("title"),
+            'description': auction.get("description"),
+            'starting_price': auction.get("starting_price"),
+            'start_time':auction.get("start_time"),
+            'end_time': auction.get("end_time"),
+            'user_id': auction.get("user_id"),
+            'bids': auction.get("bids")
         }), 200
     return jsonify({'message': 'Auction not found'}), 404
 
 @app.route('/bid', methods=['POST'])
-@jwt_required()
+#@jwt_required()
 def place_bid():
     data = request.json
     user_id = get_jwt_identity()
