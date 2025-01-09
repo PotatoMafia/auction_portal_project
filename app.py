@@ -25,13 +25,13 @@ app.config['JWT_TOKEN_LOCATION'] = ['headers']
 db.init_app(app)
 jwt.init_app(app)
 
-log_file = 'app_logs.txt'
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-app.logger.addHandler(file_handler)
+# log_file = 'app_logs.txt'
+# file_handler = logging.FileHandler(log_file)
+# file_handler.setLevel(logging.INFO)
+# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# file_handler.setFormatter(formatter)
+#
+# app.logger.addHandler(file_handler)
 
 # To jeszcze zmieniam(co niżej jest)
 @app.before_request
@@ -42,6 +42,17 @@ def handle_preflight():
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
         return response
+
+@app.before_request
+def admin_routes_auth():
+    if request.path.startswith('/admin'):
+        try:
+            verify_jwt_in_request()
+            claims = get_jwt()
+            if claims.get('role') != 'admin':
+                return jsonify({'msg': 'Access denied. Admins only.'}), 403
+        except Exception as e:
+            return jsonify({'msg': 'Authorization error'}), 401
 
 
 @app.errorhandler(InvalidHeaderError)
