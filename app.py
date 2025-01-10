@@ -190,6 +190,7 @@ def login():
     return {
         'access_token': access_token,
         'user_id': user.user_id,
+        'username': user.username,
         'role': user.role
     }, 200
 
@@ -212,11 +213,10 @@ def get_auctions():
 def get_auction(auction_id):
     auction = AuctionService.get_auction_details(auction_id)
     if auction:
-        print(auction.get("bids"))
-
         return jsonify({
             'title': auction.get("title"),
             'description': auction.get("description"),
+            'status': auction.get("status"),
             'starting_price': auction.get("starting_price"),
             'start_time': auction.get("start_time"),
             'end_time': auction.get("end_time"),
@@ -276,6 +276,7 @@ def get_user_bids(user_id):
     return [{
         'bid_id': bid.bid_id,
         'auction_id': bid.auction_id,
+        'auction_title': bid.auction.title,
         'bid_price': bid.bid_price,
         'bid_time': bid.bid_time
     } for bid in bids], 200
@@ -302,6 +303,7 @@ def get_user_transactions(user_id):
     return [{
         'transaction_id': transaction.transaction_id,
         'auction_id': transaction.auction_id,
+        'auction_title': transaction.auction.title,
         'payment_status': transaction.payment_status,
         'transaction_time': transaction.transaction_time
     } for transaction in transactions], 200

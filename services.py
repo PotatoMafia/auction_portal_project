@@ -3,6 +3,10 @@ from datetime import datetime, timedelta
 from os import access
 from venv import logger
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from flask_jwt_extended import create_access_token, get_jwt_identity
 from models import User, Auction, Bid, Transaction
 from extensions import db, bcrypt
@@ -167,7 +171,10 @@ class AuctionService:
     @staticmethod
     def close_auction(auction_id):
         auction = Auction.query.get_or_404(auction_id)
-        if auction.end_time > datetime.utcnow():
+        time_now = datetime.utcnow() + timedelta(hours=1)
+        
+        if auction.end_time > time_now:
+            print("ggggggg")
             return {'message': 'Auction is still ongoing'}, 400
         highest_bid = Bid.query.filter_by(auction_id=auction_id).order_by(Bid.bid_price.desc()).first()
         if not highest_bid:
@@ -182,14 +189,41 @@ class AuctionService:
     @staticmethod
     def check_auction_status(auction_id):
         auction = Auction.query.get_or_404(auction_id)
+        transactions = Transaction.query.filter_by(auction_id=auction_id).first()
         time_now = datetime.utcnow() + timedelta(hours=1)
         if auction.end_time > time_now and auction.start_time < time_now:
             auction.status = "aktywna"
         else:
             auction.status = "nieaktywna"
         db.session.commit()
+        print("cccccccccccccccccccccccccccccccccccc")
+        if transactions is None and auction.end_time < time_now:
+            print("ssssssssssssssssssssssssss")
+            AuctionService.close_auction(auction_id)
         return auction
 
     @staticmethod
     def notify_winner(email, item, amount):
-        print(f"Email sent to {email}: Congratulations! You've won {item} for ${amount}.")
+        from_email = "auctionsrvc@gmail.com" 
+        from_password = "fszp jdid tjbn oobm"  
+        body = f"Congratulations! You've won {item} for ${amount}. Plis proceed with payment. Item will be shipped to you soon. Bank account number: 1234567890"
+        # Tworzenie wiadomości e-mail
+        msg = MIMEMultipart()
+        msg['From'] = from_email
+        msg['To'] = email
+        msg['Subject'] = f"Auction won! Item: {item}"  # Poprawiona linia, brakujący cudzysłów
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Łączenie z serwerem SMTP Gmaila
+        try:
+            server = smtplib.SMTP_SSL('smtp.gmail.com', 465) 
+            server.login(from_email, from_password)  # Logowanie do konta Gmail
+            text = msg.as_string()  # Zamiana wiadomości na format tekstowy
+            server.sendmail(from_email, email, text)  # Wysyłanie e-maila
+            server.quit()  # Zakończenie połączenia
+
+            print(f'Email wysłany do {email}')
+        except Exception as e:
+            print(f'Wystąpił błąd podczas wysyłania e-maila: {e}')
+
+        #print(f"Email sent to {email}: Congratulations! You've won {item} for ${amount}.")
