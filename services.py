@@ -124,12 +124,6 @@ class AuctionService:
         start_time = data.get('start_time')
         end_time = data.get('end_time')
 
-        print(title)
-        print(description)
-        print(starting_price)
-        print(start_time)
-        print(end_time)
-
         # Walidacja danych
         if not title or not description or not starting_price or not start_time or not end_time:
             raise ValueError("Brak wymaganych danych do utworzenia aukcji")
@@ -184,10 +178,11 @@ class AuctionService:
     @staticmethod
     def check_auction_status(auction_id):
         auction = Auction.query.get_or_404(auction_id)
-        if auction.end_time > datetime.utcnow() or auction.start_time < datetime.utcnow:
-            auction.status = "nieaktywna"
-        else:
+        time_now = datetime.utcnow() + timedelta(hours=1)
+        if auction.end_time > time_now and auction.start_time < time_now:
             auction.status = "aktywna"
+        else:
+            auction.status = "nieaktywna"
         db.session.commit()
         return auction
 
