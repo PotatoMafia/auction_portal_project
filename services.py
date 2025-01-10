@@ -65,18 +65,7 @@ class UserService:
 
 
 class AuctionService:
-    # @staticmethod
-    # def get_all_auctions():
-    #     auctions = Auction.query.filter(Auction.end_time > datetime.utcnow()).all()
-    #     return [{
-    #         'auction_id': auction.auction_id,
-    #         'title': auction.title,
-    #         'description': auction.description,
-    #         'image_url': auction.image_url,
-    #         'starting_price': auction.starting_price,
-    #         'start_time': auction.start_time,
-    #         'end_time': auction.end_time
-    #     } for auction in auctions]
+
     @staticmethod
     def get_all_auctions():
         auctions = Auction.query.all()
@@ -114,6 +103,11 @@ class AuctionService:
         except ValueError as e:
             raise ValueError(f"Invalid date format: {e}")
 
+        if 'image_url' in data:
+            auction.image_url = data.get('image_url')
+
+        AuctionService.check_auction_status(auction_id)
+
         db.session.commit()
 
         return auction
@@ -128,6 +122,7 @@ class AuctionService:
         starting_price = data.get('starting_price')
         start_time = data.get('start_time')
         end_time = data.get('end_time')
+        image_url = data.get('image_url')  # Получаем URL изображения
 
         # Walidacja danych
         if not title or not description or not starting_price or not start_time or not end_time:
@@ -143,10 +138,14 @@ class AuctionService:
             starting_price=starting_price,
             start_time=datetime.fromisoformat(start_time),
             end_time=datetime.fromisoformat(end_time),
-            user_id=user_id
+            user_id=user_id,
+            image_url=image_url
         )
+
         db.session.add(auction)
         db.session.commit()
+        AuctionService.check_auction_status(auction.auction_id)
+
         return auction
 
     @staticmethod

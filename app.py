@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timedelta
 from functools import wraps
 from venv import logger
@@ -6,6 +7,7 @@ from venv import logger
 from flask import Flask, request, jsonify, make_response, abort, send_from_directory
 from flask_bcrypt import check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, verify_jwt_in_request
+from werkzeug.utils import secure_filename
 
 from models import Bid, Auction, Transaction, User, Log
 from services import UserService, AuctionService
@@ -19,6 +21,7 @@ CORS(app, resources={r"/admin/*": {"origins": "*"}})
 cors.init_app(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auction_portal.db'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'AAAAAAAAAAAAAAA'
 app.config['JWT_TOKEN_LOCATION'] = ['headers']
@@ -100,162 +103,72 @@ def admin_panel():
     return {"message": "Welcome to the admin panel"}, 200
 
 
-# @app.route('/admin', methods=['GET'])
-# def admin():
-#     try:
-#         verify_jwt_in_request()
-#         user_identity = get_jwt_identity()
-#         print(f"User identity: {user_identity}, Type: {type(user_identity)}")
-#
-#         if not isinstance(user_identity, str):
-#             return {'msg': 'Subject must be a string'}, 422
-#
-#         claims = get_jwt()
-#         if claims.get('role') != 'admin':
-#             return {'msg': 'Access denied. Admins only.'}, 403
-#
-#         return {'message': f'Welcome, admin {user_identity}'}, 200
-#     except Exception as e:
-#         return {'msg': str(e)}, 400
+UPLOAD_FOLDER = 'imagesForAuctions'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
 
-# @app.route('/admin/auctions', methods=['GET'])
-# @jwt_required()
-# def get_admin_auctions():
-#     try:
-#         user_id = get_jwt_identity()
-#         claims = get_jwt()
-#         role = claims.get('role')
-#
-#         if role != 'admin':
-#             return jsonify({"msg": "Access denied"}), 403
-#
-#         # Fetch all auctions
-#         auctions = AuctionService.get_all_auctions()
-#         return jsonify(auctions), 200
-#     except Exception as e:
-#         app.logger.error(f"Error retrieving auctions: {str(e)}")
-#         return jsonify({"msg": "Server error"}), 500
+from werkzeug.utils import secure_filename
 
-
-# def get_all_auctions():
-#     user_id = get_jwt_identity()
-#     user = User.query.get(user_id)
-#     if user.role != "admin":
-#         return jsonify({'message': 'Unauthorized access'}), 403
-#
-#     auctions = Auction.query.all()
-#     return jsonify([{
-#         'auction_id': auction.auction_id,
-#         'title': auction.title,
-#         'description': auction.description,
-#         'starting_price': auction.starting_price,
-#         'end_time': auction.end_time,
-#         'user_id': auction.user_id
-#     } for auction in auctions]), 200
-
-
-# @app.route('/admin/auction', methods=['POST'])
-# @jwt_required()
-# def create_auction_admin():
-#     user_id = get_jwt_identity()
-#     user = User.query.get(user_id)
-#     logging.INFO(f"rola={user.role}")
-#     logging.INFO(f"")
-#     if user.role != "admin":
-#         logging.warning(f"rola={user.role}")
-#         return jsonify({'message': 'Unauthorized access'}), 403
-#
-#     data = request.json
-#     auction = Auction(
-#         title=data['title'],
-#         description=data['description'],
-#         starting_price=data['starting_price'],
-#         start_time=datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S'),
-#         end_time=datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S'),
-#         user_id=user_id
-#     )
-#     db.session.add(auction)
-#     db.session.commit()
-#     return jsonify({'message': 'Auction created successfully', 'auction_id': auction.auction_id}), 201
-
-
-# @app.route('/admin/auction/<int:auction_id>', methods=['PUT'])
-# @jwt_required()
-# def edit_auction(auction_id):
-#     user_id = get_jwt_identity()
-#     user = User.query.get(user_id)
-#
-#     if user.role != "admin":
-#         logging.warning(f"rola={user.role}")
-#         return jsonify({'message': 'Unauthorized access'}), 403
-#
-#     data = request.json
-#     auction = Auction.query.get_or_404(auction_id)
-#
-#     auction.title = data.get('title', auction.title)
-#     auction.description = data.get('description', auction.description)
-#     auction.starting_price = data.get('starting_price', auction.starting_price)
-#     if 'start_time' in data:
-#         auction.start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
-#     if 'end_time' in data:
-#         auction.end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
-#
-#     try:
-#         db.session.commit()
-#         return jsonify({'message': 'Auction updated successfully'}), 200
-#     except Exception as e:
-#         return jsonify({'message': f'Error updating auction: {str(e)}'}), 500
-
-# @app.before_request
-# def admin_routes_auth():
-#     if request.path.startswith('/admin/'):
-#         try:
-#             verify_jwt_in_request()
-#             claims = get_jwt()
-#             if claims.get('role') != 'admin':
-#                 return jsonify({'msg': 'Access denied. Admins only.'}), 403
-#         except Exception as e:
-#             app.logger.error(f'Authorization error: {e}')
-#             return jsonify({'msg': 'Authorization error'}), 401
 @app.route('/imagesForAuctions/<filename>')
 def get_image(filename):
-    return send_from_directory('imagesForAuctions', filename)
-
-@app.route('/admin/auctions', methods=['GET'])
-@admin_required
-def get_admin_auctions():
-    try:
-        auctions = AuctionService.get_all_auctions()
-        return jsonify(auctions), 200
-    except Exception as e:
-        app.logger.error(f"Error retrieving auctions: {e}")
-        return jsonify({"msg": "Server error"}), 500
-
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/admin/auction', methods=['POST'])
 @admin_required
 def create_admin_auction():
     try:
-        data = request.json
-        auction = AuctionService.create_auction(data, get_jwt_identity())
+        app.logger.info("Received POST request to /admin/auction")
+        data = request.form
+
+        image = request.files.get('image')
+
+        filename = None
+        if image and allowed_file(image.filename):
+            filename = secure_filename(image.filename)
+            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            image.save(image_path)
+
+        auction_data = {
+            'title': data.get('title'),
+            'description': data.get('description'),
+            'starting_price': data.get('starting_price'),
+            'start_time': data.get('start_time'),
+            'end_time': data.get('end_time'),
+            'user_id': data.get('user_id'),
+            'status': data.get('status'),
+            'image': filename,
+        }
+
+        auction = AuctionService.create_auction(auction_data, get_jwt_identity())
         return jsonify({'msg': 'Auction created successfully', 'auction_id': auction.auction_id}), 201
     except Exception as e:
         app.logger.error(f"Error creating auction: {e}")
         return jsonify({'msg': 'Server error'}), 500
 
-
 @app.route('/admin/auction/<int:auction_id>', methods=['PUT'])
 @admin_required
 def update_admin_auction(auction_id):
     try:
-        data = request.json
+        data = request.form.to_dict()
+        image = request.files.get('image')
+
+        if image and allowed_file(image.filename):
+            filename = secure_filename(image.filename)
+            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            image.save(image_path)
+            image_url = f"/{filename}"
+            data['image_url'] = image_url
+            app.logger.debug(f"Received data: {data}")
+            app.logger.debug(f"Uploaded image: {image.filename}")
         updated_auction = AuctionService.edit_auction(auction_id, data)
         return jsonify({'msg': 'Auction updated successfully'}), 200
     except Exception as e:
         app.logger.error(f"Error updating auction: {e}")
         return jsonify({'msg': 'Server error'}), 500
-
 
 @app.route('/register', methods=['POST'])
 def register():
