@@ -39,6 +39,7 @@ class Auction(db.Model):
             'auction_id': self.auction_id,
             'title': self.title,
             'description': self.description,
+            'image_url': self.image_url,
             'starting_price': self.starting_price,
             'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
             'end_time': self.end_time.strftime('%Y-%m-%d %H:%M:%S'),

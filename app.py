@@ -1,17 +1,18 @@
 import logging
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from functools import wraps
 from venv import logger
 
-from flask import Flask, request, jsonify, make_response, abort
+from flask import Flask, request, jsonify, make_response, abort, send_from_directory
 from flask_bcrypt import check_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, verify_jwt_in_request
 
 from models import Bid, Auction, Transaction, User, Log
 from services import UserService, AuctionService
-from extensions import db,jwt
+from extensions import db, jwt
 from flask_cors import CORS
 from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
+
 app = Flask(__name__)
 cors = CORS(resources={r"/*": {"origins": "http://localhost:5173"}})
 CORS(app, resources={r"/admin/*": {"origins": "*"}})
@@ -25,6 +26,7 @@ app.config['JWT_TOKEN_LOCATION'] = ['headers']
 db.init_app(app)
 jwt.init_app(app)
 
+
 # log_file = 'app_logs.txt'
 # file_handler = logging.FileHandler(log_file)
 # file_handler.setLevel(logging.INFO)
@@ -36,14 +38,6 @@ jwt.init_app(app)
 # To jeszcze zmieniam(co niżej jest)
 
 
-
-
-
-
-
-
-
-
 @app.before_request
 def handle_preflight():
     if request.method == 'OPTIONS':
@@ -52,6 +46,7 @@ def handle_preflight():
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
         return response
+
 
 @app.before_request
 def admin_routes_auth():
@@ -69,6 +64,7 @@ def admin_routes_auth():
 def handle_invalid_header_error(e):
     return jsonify({"msg": "Invalid Authorization Header"}), 422
 
+
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -80,8 +76,8 @@ def admin_required(fn):
         except Exception as e:
             abort(404)
         return fn(*args, **kwargs)
-    return wrapper
 
+    return wrapper
 
 
 @app.route('/tokencheck/<int:fn>', methods=['GET'])
@@ -93,12 +89,17 @@ def user_required(fn):
         if claims.get('role') != 'user':
             return jsonify({"msg": "Access denied. user only."}), 403
         return fn(*args, **kwargs)
+
     return wrapper
+
+
 # Routes
 @app.route('/admin', methods=['GET'])
 @admin_required
 def admin_panel():
     return {"message": "Welcome to the admin panel"}, 200
+
+
 # @app.route('/admin', methods=['GET'])
 # def admin():
 #     try:
@@ -118,8 +119,6 @@ def admin_panel():
 #         return {'msg': str(e)}, 400
 
 
-
-
 # @app.route('/admin/auctions', methods=['GET'])
 # @jwt_required()
 # def get_admin_auctions():
@@ -137,8 +136,6 @@ def admin_panel():
 #     except Exception as e:
 #         app.logger.error(f"Error retrieving auctions: {str(e)}")
 #         return jsonify({"msg": "Server error"}), 500
-
-
 
 
 # def get_all_auctions():
@@ -221,6 +218,9 @@ def admin_panel():
 #         except Exception as e:
 #             app.logger.error(f'Authorization error: {e}')
 #             return jsonify({'msg': 'Authorization error'}), 401
+@app.route('/imagesForAuctions/<filename>')
+def get_image(filename):
+    return send_from_directory('imagesForAuctions', filename)
 
 @app.route('/admin/auctions', methods=['GET'])
 @admin_required
@@ -244,6 +244,7 @@ def create_admin_auction():
         app.logger.error(f"Error creating auction: {e}")
         return jsonify({'msg': 'Server error'}), 500
 
+
 @app.route('/admin/auction/<int:auction_id>', methods=['PUT'])
 @admin_required
 def update_admin_auction(auction_id):
@@ -254,8 +255,6 @@ def update_admin_auction(auction_id):
     except Exception as e:
         app.logger.error(f"Error updating auction: {e}")
         return jsonify({'msg': 'Server error'}), 500
-
-
 
 
 @app.route('/register', methods=['POST'])
@@ -282,14 +281,13 @@ def login():
     }, 200
 
 
-
-
 @app.route('/auctions', methods=['POST'])
 ##TODO:Autoryzacja tokeny szwankują
 def create_auction():
     data = request.json
     auction = AuctionService.create_auction(data, data['user_id'])
     return jsonify({'message': 'Auction created successfully', 'auction_id': auction.auction_id}), 201
+
 
 @app.route('/auctions', methods=['GET'])
 def get_auctions():
@@ -301,19 +299,19 @@ def get_auctions():
 def get_auction(auction_id):
     auction = AuctionService.get_auction_details(auction_id)
     if auction:
-        
         print(auction.get("bids"))
 
         return jsonify({
             'title': auction.get("title"),
             'description': auction.get("description"),
             'starting_price': auction.get("starting_price"),
-            'start_time':auction.get("start_time"),
+            'start_time': auction.get("start_time"),
             'end_time': auction.get("end_time"),
             'user_id': auction.get("user_id"),
             'bids': auction.get("bids")
         }), 200
     return jsonify({'message': 'Auction not found'}), 404
+
 
 @app.route('/bid', methods=['POST'])
 ### TODO: MAKE IT WORK. Autoryzacja nie działa nwm czemu. @jwt_required()
@@ -329,10 +327,12 @@ def place_bid():
     db.session.commit()
     return jsonify({'message': 'Bid placed successfully'}), 201
 
+
 @app.route('/close_auction/<int:auction_id>', methods=['POST'])
 @jwt_required()
 def close_auction(auction_id):
     return jsonify(AuctionService.close_auction(auction_id)), 200
+
 
 @app.route('/')
 def home():
@@ -356,6 +356,7 @@ def get_user(user_id):
         'role': user.role
     }, 200
 
+
 @app.route('/user/<int:user_id>/bids', methods=['GET'])
 def get_user_bids(user_id):
     bids = Bid.query.filter_by(user_id=user_id).all()
@@ -365,6 +366,7 @@ def get_user_bids(user_id):
         'bid_price': bid.bid_price,
         'bid_time': bid.bid_time
     } for bid in bids], 200
+
 
 @app.route('/logs', methods=['GET'])
 @jwt_required()
@@ -380,6 +382,7 @@ def get_logs():
         for log in logs
     ]), 200
 
+
 @app.route('/user/<int:user_id>/transactions', methods=['GET'])
 def get_user_transactions(user_id):
     transactions = Transaction.query.filter_by(winner_id=user_id).all()
@@ -392,9 +395,6 @@ def get_user_transactions(user_id):
 
 
 from flask_jwt_extended import get_jwt_identity, get_jwt
-
-
-
 
 if __name__ == '__main__':
     with app.app_context():

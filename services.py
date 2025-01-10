@@ -80,15 +80,20 @@ class AuctionService:
     @staticmethod
     def get_all_auctions():
         auctions = Auction.query.all()
-        return [{
-            'auction_id': auction.auction_id,
-            'title': auction.title,
-            'description': auction.description,
-            'image_url': auction.image_url,
-            'starting_price': auction.starting_price,
-            'start_time': auction.start_time.isoformat(),  # Ensure datetime is serialized
-            'end_time': auction.end_time.isoformat()  # Ensure datetime is serialized
-        } for auction in auctions]
+        auction_data = []
+
+        for auction in auctions:
+            auction_data.append({
+                'auction_id': auction.auction_id,
+                'title': auction.title,
+                'description': auction.description,
+                'image_url': auction.image_url,
+                'starting_price': auction.starting_price,
+                'start_time': auction.start_time.isoformat() if auction.start_time else None,
+                'end_time': auction.end_time.isoformat() if auction.end_time else None
+            })
+
+        return auction_data
 
     @staticmethod
     def edit_auction(auction_id, data):
