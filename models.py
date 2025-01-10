@@ -30,6 +30,7 @@ class Auction(db.Model):
     end_time = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    status = db.Column(db.String(20), default="nieaktywna") ## aktywna/nieaktywna. Rozwazam dodanie opcji oczekuje gdy jest przed ale to szczegol
     bids = db.relationship('Bid', backref='auction', lazy=True)
     transaction = db.relationship('Transaction', backref='auction', uselist=False, lazy=True)
 

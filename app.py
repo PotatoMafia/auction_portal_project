@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime,timedelta
 from functools import wraps
 from venv import logger
 
@@ -34,6 +34,16 @@ jwt.init_app(app)
 # app.logger.addHandler(file_handler)
 
 # To jeszcze zmieniam(co niżej jest)
+
+
+
+
+
+
+
+
+
+
 @app.before_request
 def handle_preflight():
     if request.method == 'OPTIONS':
@@ -71,6 +81,8 @@ def admin_required(fn):
             abort(404)
         return fn(*args, **kwargs)
     return wrapper
+
+
 
 @app.route('/tokencheck/<int:fn>', methods=['GET'])
 def user_required(fn):
@@ -273,11 +285,10 @@ def login():
 
 
 @app.route('/auctions', methods=['POST'])
-@jwt_required()
+##TODO:Autoryzacja tokeny szwankują
 def create_auction():
     data = request.json
-    user_id = get_jwt_identity()
-    auction = AuctionService.create_auction(data, user_id)
+    auction = AuctionService.create_auction(data, data['user_id'])
     return jsonify({'message': 'Auction created successfully', 'auction_id': auction.auction_id}), 201
 
 @app.route('/auctions', methods=['GET'])
@@ -305,14 +316,15 @@ def get_auction(auction_id):
     return jsonify({'message': 'Auction not found'}), 404
 
 @app.route('/bid', methods=['POST'])
-#@jwt_required()
+### TODO: MAKE IT WORK. Autoryzacja nie działa nwm czemu. @jwt_required()
 def place_bid():
     data = request.json
-    user_id = get_jwt_identity()
+    AuctionService.check_auction_status(auction_id=data['auction_id'])
+    ##TODO: Może fajnie byłoby dodać nickname user = get_user(data['user_id'])
     auction = Auction.query.get_or_404(data['auction_id'])
-    if auction.end_time < datetime.utcnow():
-        return jsonify({'message': 'Auction has ended'}), 400
-    bid = Bid(auction_id=data['auction_id'], user_id=user_id, bid_price=data['bid_price'])
+    if auction.status == "nieaktywna":
+        return jsonify({'message': 'Aukcja nieaktywna'}), 409
+    bid = Bid(auction_id=data['auction_id'], user_id=data['user_id'], bid_price=data['bid_price'])
     db.session.add(bid)
     db.session.commit()
     return jsonify({'message': 'Bid placed successfully'}), 201
