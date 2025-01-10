@@ -301,12 +301,11 @@ def get_auctions():
 def get_auction(auction_id):
     auction = AuctionService.get_auction_details(auction_id)
     if auction:
-        
-        print(auction.get("bids"))
 
         return jsonify({
             'title': auction.get("title"),
             'description': auction.get("description"),
+            'status': auction.get("status"),
             'starting_price': auction.get("starting_price"),
             'start_time':auction.get("start_time"),
             'end_time': auction.get("end_time"),
