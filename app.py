@@ -277,6 +277,7 @@ def login():
     return {
         'access_token': access_token,
         'user_id': user.user_id,
+        'username': user.username,
         'role': user.role
     }, 200
 
@@ -362,6 +363,7 @@ def get_user_bids(user_id):
     return [{
         'bid_id': bid.bid_id,
         'auction_id': bid.auction_id,
+        'auction_title': bid.auction.title,
         'bid_price': bid.bid_price,
         'bid_time': bid.bid_time
     } for bid in bids], 200
@@ -388,6 +390,7 @@ def get_user_transactions(user_id):
     return [{
         'transaction_id': transaction.transaction_id,
         'auction_id': transaction.auction_id,
+        'auction_title': transaction.auction.title,
         'payment_status': transaction.payment_status,
         'transaction_time': transaction.transaction_time
     } for transaction in transactions], 200
