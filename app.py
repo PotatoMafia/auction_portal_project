@@ -16,9 +16,6 @@ from flask_cors import CORS
 from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
 
 app = Flask(__name__)
-cors = CORS(resources={r"/*": {"origins": "http://localhost:5173"}})
-CORS(app, resources={r"/admin/*": {"origins": "*"}})
-cors.init_app(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auction_portal.db'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -29,6 +26,7 @@ app.config['JWT_TOKEN_LOCATION'] = ['headers']
 db.init_app(app)
 jwt.init_app(app)
 
+CORS(app)
 
 # log_file = 'app_logs.txt'
 # file_handler = logging.FileHandler(log_file)
@@ -39,16 +37,6 @@ jwt.init_app(app)
 # app.logger.addHandler(file_handler)
 
 # To jeszcze zmieniam(co niżej jest)
-
-
-@app.before_request
-def handle_preflight():
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers["Access-Control-Allow-Origin"] = "http://localhost:5173"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-        return response
 
 
 @app.before_request

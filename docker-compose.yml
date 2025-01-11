@@ -12,7 +12,8 @@ services:
       - DATABASE_URI=sqlite:///auction_portal0.db
     volumes:
       - ./auction_portal_project:/app
-      - ./sqlite_data/:/app/data/
+      - ./data/sqlite:/app/instance/
+      - ./data/images:/app/imagesForAuctions
     depends_on:
       - sqlite
 
