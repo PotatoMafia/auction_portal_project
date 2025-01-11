@@ -198,7 +198,19 @@ def login():
 @app.route('/auctions', methods=['POST'])
 ##TODO:Autoryzacja tokeny szwankują
 def create_auction():
-    data = request.json
+    filename = None
+    image = request.files.get('image')
+    if image:
+        print("IMAGE!")
+    if image and allowed_file(image.filename):
+        print("IMAGE2!")
+    if image and allowed_file(image.filename):
+        filename = secure_filename(image.filename)
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        image.save(image_path)
+    
+    data = request.form.to_dict()
+    data['image_url'] = filename
     auction = AuctionService.create_auction(data, data['user_id'])
     return jsonify({'message': 'Auction created successfully', 'auction_id': auction.auction_id}), 201
 

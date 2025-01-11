@@ -174,7 +174,6 @@ class AuctionService:
         time_now = datetime.utcnow() + timedelta(hours=1)
         
         if auction.end_time > time_now:
-            print("ggggggg")
             return {'message': 'Auction is still ongoing'}, 400
         highest_bid = Bid.query.filter_by(auction_id=auction_id).order_by(Bid.bid_price.desc()).first()
         if not highest_bid:
@@ -196,9 +195,7 @@ class AuctionService:
         else:
             auction.status = "nieaktywna"
         db.session.commit()
-        print("cccccccccccccccccccccccccccccccccccc")
         if transactions is None and auction.end_time < time_now:
-            print("ssssssssssssssssssssssssss")
             AuctionService.close_auction(auction_id)
         return auction
 
