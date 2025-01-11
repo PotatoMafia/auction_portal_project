@@ -231,6 +231,7 @@ def get_auction(auction_id):
             'status': auction.get("status"),
             'starting_price': auction.get("starting_price"),
             'start_time': auction.get("start_time"),
+            'image_url': auction.get("image_url"),
             'end_time': auction.get("end_time"),
             'user_id': auction.get("user_id"),
             'bids': auction.get("bids")
