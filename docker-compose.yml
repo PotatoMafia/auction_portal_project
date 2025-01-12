@@ -9,7 +9,7 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - DATABASE_URI=sqlite:///auction_portal0.db
+      - DATABASE_URI=sqlite:///auction_portal.db
     volumes:
       - ./auction_portal_project:/app
       - ./data/sqlite:/app/instance/
@@ -33,7 +33,7 @@ services:
     image: nouchka/sqlite3:latest
     container_name: sqlite
     volumes:
-      - ./sqlite_data/:/data/
+      - ./data/:/data/
     stdin_open: true
     tty: true
     ports:
