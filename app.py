@@ -41,6 +41,8 @@ CORS(app)
 
 @app.before_request
 def admin_routes_auth():
+    if request.method == 'OPTIONS':
+        return '', 200
     if request.path.startswith('/admin'):
         try:
             verify_jwt_in_request()
