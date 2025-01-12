@@ -246,8 +246,11 @@ def place_bid():
     AuctionService.check_auction_status(auction_id=data['auction_id'])
     ##TODO: Może fajnie byłoby dodać nickname user = get_user(data['user_id'])
     auction = Auction.query.get_or_404(data['auction_id'])
+    hbid = Bid.query.filter_by(auction_id=data['auction_id']).order_by(Bid.bid_price.desc()).first()
     if auction.status == "nieaktywna":
         return jsonify({'message': 'Aukcja nieaktywna'}), 409
+    if hbid and float(data["bid_price"]) < float(hbid.bid_price):
+        return jsonify({'message': 'Nie możesz bidwoać poniżej wartości'}), 410
     bid = Bid(auction_id=data['auction_id'], user_id=data['user_id'], bid_price=data['bid_price'])
     db.session.add(bid)
     db.session.commit()
